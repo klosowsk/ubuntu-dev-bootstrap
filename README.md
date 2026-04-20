@@ -30,17 +30,27 @@ BOOTSTRAP_HOST_COLOR=red bash bootstrap.sh
 
 Valid values: `red`, `green`, `blue`, `yellow`, `magenta`, `cyan` (any color agnoster's `prompt_segment` accepts).
 
+### Optional: GitHub token (avoid rate limits)
+
+The script hits the GitHub releases API three times — for `k9s`, `lazygit`, `lazydocker` — to pick up the latest versions. Anonymous requests are capped at 60/hour per IP. If you bootstrap several boxes in quick succession, pass a token:
+
+```sh
+GITHUB_TOKEN=ghp_xxx bash bootstrap.sh
+```
+
+Any token with default scopes works; no special permissions are needed for public-release lookups.
+
 ## What it installs
 
 ### Shell / editor
 - **zsh + oh-my-zsh** with agnoster theme
 - Plugins: `zsh-autosuggestions`, `zsh-syntax-highlighting`, `fast-syntax-highlighting`, `zsh-autocomplete`
 - **tmux** + catppuccin-mocha status config
-- **neovim 0.11.6** (prebuilt tarball → `/usr/local/bin/nvim`)
+- **neovim** — latest stable, from the `stable` release tag (prebuilt tarball → `/usr/local/bin/nvim`). To upgrade in place: `sudo rm /usr/local/bin/nvim` then re-run.
 - nvim config cloned from [klosowsk/rklosowski-nvim](https://github.com/klosowsk/rklosowski-nvim)
 
 ### Runtime / languages
-- **mise** — installs `node`, `bun`, `kubectl`, `helm` per `dotfiles/mise-config.toml`
+- **mise** — installs `node@lts`, `bun@latest`, `kubectl@latest`, `helm@latest` per `dotfiles/mise-config.toml`
 - `autojump`, `direnv`
 
 ### Kubernetes / containers

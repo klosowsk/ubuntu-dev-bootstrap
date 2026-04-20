@@ -6,12 +6,24 @@ set -euo pipefail
 
 BUNDLE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DOTFILES="$BUNDLE_DIR/dotfiles"
-NVIM_VERSION="v0.11.6"
+# neovim: "stable" tag always points to the latest stable release.
+NVIM_VERSION="stable"
 NVIM_TARBALL="nvim-linux-x86_64.tar.gz"
 NVIM_URL="https://github.com/neovim/neovim/releases/download/${NVIM_VERSION}/${NVIM_TARBALL}"
 NVIM_CONFIG_REPO="https://github.com/klosowsk/rklosowski-nvim.git"
 
 log() { printf "\n\033[1;34m==> %s\033[0m\n" "$*"; }
+
+# Wrapper for curl calls to GitHub's releases API. If GITHUB_TOKEN is set in
+# the environment, use it — anonymous requests are capped at 60/hour, which
+# can 429 when bootstrapping several boxes in quick succession.
+gh_curl() {
+  if [[ -n "${GITHUB_TOKEN:-}" ]]; then
+    curl -fsSL -H "Authorization: Bearer ${GITHUB_TOKEN}" "$@"
+  else
+    curl -fsSL "$@"
+  fi
+}
 
 # --- 1. apt packages ----------------------------------------------------------
 log "Installing apt packages"
@@ -30,11 +42,12 @@ sudo apt-get install -y \
   autojump \
   direnv
 
-# --- 2. neovim 0.11.6 (prebuilt tarball) --------------------------------------
-if [[ -x /usr/local/bin/nvim ]] && /usr/local/bin/nvim --version | head -1 | grep -q "${NVIM_VERSION#v}"; then
-  log "neovim ${NVIM_VERSION} already installed"
+# --- 2. neovim (latest stable prebuilt tarball) -------------------------------
+# To upgrade in place: `sudo rm /usr/local/bin/nvim` then re-run this script.
+if [[ -x /usr/local/bin/nvim ]]; then
+  log "neovim already installed ($(/usr/local/bin/nvim --version | head -1))"
 else
-  log "Installing neovim ${NVIM_VERSION}"
+  log "Installing neovim (${NVIM_VERSION})"
   tmp="$(mktemp -d)"
   curl -fsSL -o "$tmp/$NVIM_TARBALL" "$NVIM_URL"
   sudo rm -rf /opt/nvim-linux-x86_64
@@ -163,7 +176,7 @@ fi
 if ! command -v k9s >/dev/null 2>&1; then
   log "Installing k9s"
   tmp="$(mktemp -d)"
-  K9S_URL="$(curl -fsSL https://api.github.com/repos/derailed/k9s/releases/latest \
+  K9S_URL="$(gh_curl https://api.github.com/repos/derailed/k9s/releases/latest \
     | grep browser_download_url \
     | grep -E 'k9s_Linux_amd64\.tar\.gz"' \
     | head -1 | cut -d'"' -f4)"
@@ -179,7 +192,7 @@ fi
 if ! command -v lazygit >/dev/null 2>&1; then
   log "Installing lazygit"
   tmp="$(mktemp -d)"
-  LG_VER="$(curl -fsSL https://api.github.com/repos/jesseduffield/lazygit/releases/latest \
+  LG_VER="$(gh_curl https://api.github.com/repos/jesseduffield/lazygit/releases/latest \
     | grep -Po '"tag_name": "v\K[^"]+')"
   curl -fsSL -o "$tmp/lazygit.tar.gz" \
     "https://github.com/jesseduffield/lazygit/releases/download/v${LG_VER}/lazygit_${LG_VER}_Linux_x86_64.tar.gz"
@@ -194,7 +207,7 @@ fi
 if ! command -v lazydocker >/dev/null 2>&1; then
   log "Installing lazydocker"
   tmp="$(mktemp -d)"
-  LD_VER="$(curl -fsSL https://api.github.com/repos/jesseduffield/lazydocker/releases/latest \
+  LD_VER="$(gh_curl https://api.github.com/repos/jesseduffield/lazydocker/releases/latest \
     | grep -Po '"tag_name": "v\K[^"]+')"
   curl -fsSL -o "$tmp/lazydocker.tar.gz" \
     "https://github.com/jesseduffield/lazydocker/releases/download/v${LD_VER}/lazydocker_${LD_VER}_Linux_x86_64.tar.gz"
